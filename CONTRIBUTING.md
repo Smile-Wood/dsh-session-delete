@@ -5,7 +5,7 @@ the DSH version you are running and the exact step that failed.
 
 ## Before opening an issue
 
-- Check [Limitations](../README.md#limitations) in the README. Several failure modes are known and
+- Check [Limitations](README.md#limitations) in the README. Several failure modes are known and
   documented, including the one where a DSH upgrade changes the on-disk layout.
 - If the menu item does not appear at all, confirm the browser bundle reached the client-module
   graph — a plugin can be active on the Host while its browser half is missing. The most common
@@ -14,7 +14,7 @@ the DSH version you are running and the exact step that failed.
   `$DSH_HOME/profiles/<profile>/package.json`. A dependency that is installed but absent from that
   array loads nothing, silently.
 - If a code change to `host.js` appears to do nothing, read
-  [Host reload semantics](../README.md#host-reload-semantics). Editing an installed Host file in
+  [Host reload semantics](README.md#host-reload-semantics). Editing an installed Host file in
   place is *expected* to have no effect; re-run the `dsh plugin … add` command instead.
 
 ## A good bug report
