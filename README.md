@@ -71,7 +71,7 @@ $DSH_HOME/
 The plugin installs as a **profile bundle**, using DSH's own plugin command:
 
 ```sh
-dsh plugin --profile web add github:<your-username>/dsh-session-delete
+dsh plugin --profile web add github:Smile-Wood/dsh-session-delete
 ```
 
 From a local checkout instead of a git host:
@@ -92,7 +92,7 @@ Use the profile you actually launch DSH with (`web` is the DSH Desktop default, 
 > explicit HTTPS spec and let git's credential helper authenticate:
 >
 > ```sh
-> dsh plugin --profile web add git+https://github.com/<your-username>/dsh-session-delete.git
+> dsh plugin --profile web add git+https://github.com/Smile-Wood/dsh-session-delete.git
 > ```
 
 Then reload the DSH page in your browser so it picks up the browser bundle, and open a Session's
@@ -101,7 +101,7 @@ Then reload the DSH page in your browser so it picks up the browser bundle, and 
 To update after new commits land, re-run the same command:
 
 ```sh
-dsh plugin --profile web add github:<your-username>/dsh-session-delete
+dsh plugin --profile web add github:Smile-Wood/dsh-session-delete
 ```
 
 Re-running `add` *is* the update path: pnpm re-resolves the ref, and a changed shipped file lands in
@@ -133,7 +133,7 @@ a `dsh.bundle.patch`, appends its package name to `dsh.profile.bundles`:
 // $DSH_HOME/profiles/web/package.json, after the add
 {
   "dependencies": {
-    "dsh-session-delete": "git+https://github.com/<your-username>/dsh-session-delete.git"
+    "dsh-session-delete": "git+https://github.com/Smile-Wood/dsh-session-delete.git"
   },
   "dsh": {
     "profile": {

@@ -129,8 +129,9 @@ Verified on Windows with Node 24, against a live DSH install:
 - end-to-end: a throwaway Session's artifact directory and projection-cache file are both removed,
   and real Sessions are untouched;
 - `node --check` passes on both halves;
-- the `dsh plugin` install path, both spec forms: a local path spec and a `git+file://` spec, each
-  appending the package name to `dsh.profile.bundles` and activating the patch it declares;
+- the `dsh plugin` install path, all three spec forms — a local path spec, a `git+file://` spec, and
+  the published `github:Smile-Wood/dsh-session-delete` shorthand — each appending the package name
+  to `dsh.profile.bundles` and activating the patch it declares;
 - re-running `add` after a shipped file changed, producing a new pnpm store target — i.e. a new
   module URL for the Host half;
 - `dsh plugin … remove` on the live install: the name leaves `dsh.profile.bundles`, the route stops
@@ -144,10 +145,9 @@ Not verified:
 - non-Windows platforms (the removal retry loop exists specifically for Windows handle semantics);
 - concurrent deletion of the same Session, or deletion during an active turn;
 - behavior after a DSH upgrade that changes the on-disk layout;
-- a `github:` or `git+https:` spec against *this* repository, since it has no public remote yet.
-  Both spec forms were exercised against other repositories and resolve to the same
-  `git+https://…` dependency, but that is an inference about this repository, not a measurement of
-  it.
+- a *private* `github:` install. The shorthand's HTTPS-then-SSH probe means a private repository
+  needs an explicit `git+https://` spec plus working credentials; the public path is the one that
+  was measured.
 
 ## Maintenance expectations
 
