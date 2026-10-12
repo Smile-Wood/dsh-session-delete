@@ -68,11 +68,15 @@ $DSH_HOME/
 
 ## Install
 
-There are two ways to mount it. Both were verified working.
+There are two ways to mount it.
+
+> Only **Option A** was verified end to end. Option B is the standard bundle shape and the package
+> manifest is written for it, but it was not exercised with this package name — treat it as
+> untested.
 
 ### Option A — mount from a checkout (no install step)
 
-This is the simplest route and the one used during development.
+This is the simplest route, and the one used during development and testing.
 
 1. Clone this repository somewhere permanent.
 2. Create or edit `$DSH_HOME/cordis.patch.yml` (Windows: `%USERPROFILE%\.dsh\cordis.patch.yml`)
@@ -90,7 +94,7 @@ This is the simplest route and the one used during development.
 
 See [`examples/cordis.patch.yml`](examples/cordis.patch.yml) for an annotated version of this file.
 
-### Option B — install as a profile bundle
+### Option B — install as a profile bundle (untested)
 
 Install the package into the `web` profile and enable it. The exact command depends on how your DSH
 build exposes plugin management; the package is shaped for it:
@@ -153,6 +157,9 @@ to your install so it does not collide with another row.
   removes the bytes and the sidebar row, via step 3's explicit emit).
 - **`node --check` is the only automated test.** There is no test suite. See
   [Testing](#testing) for the manual verification that was performed.
+- **Not tested on macOS or Linux.** The removal retry loop in `host.js` exists specifically for
+  Windows handle semantics. It is written to be harmless elsewhere, but that is a reading of the
+  code, not a measurement.
 
 ## Testing
 

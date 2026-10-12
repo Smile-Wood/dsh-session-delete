@@ -9,7 +9,7 @@ entirely AI-generated, and that fact should be as legible as the code itself.
 | --- | --- |
 | **Origin** | Written by an AI coding agent inside DeepSeek Harness, over a single extended session |
 | **Human role** | Set the goal, fixed the constraints, reviewed results, approved publication |
-| **Model** | DeepSeek (`deepseek-v4.1-flash` and predecessors; the session spanned several model switches) |
+| **Model** | DeepSeek (`deepseek-v4.1-flash`; the session spanned several model switches) |
 | **Human-authored code** | None |
 | **License** | MIT |
 
