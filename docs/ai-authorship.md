@@ -134,7 +134,9 @@ Verified on Windows with Node 24, against a live DSH install:
 - re-running `add` after a shipped file changed, producing a new pnpm store target — i.e. a new
   module URL for the Host half;
 - `dsh plugin … remove` on the live install: the name leaves `dsh.profile.bundles`, the route stops
-  answering (404), and the browser bundle leaves the client-module graph (404).
+  answering (404), and the browser bundle leaves the client-module graph (404). For a local-path
+  (`link:`) install, pnpm leaves the `node_modules` symlink behind — inert, and documented in the
+  README.
 
 Not verified:
 

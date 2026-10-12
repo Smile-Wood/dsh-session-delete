@@ -106,6 +106,11 @@ dsh plugin --profile web remove dsh-session-delete
 That prunes the dependency, drops the name from `dsh.profile.bundles`, and unloads both halves —
 verified live: the route stops answering and the browser bundle leaves the client-module graph.
 
+> [!NOTE]
+> For a **local-path** install the profile entry is a `link:`, and pnpm was observed to leave the
+> symlink at `$DSH_HOME/profiles/<profile>/node_modules/dsh-session-delete` behind after a `remove`.
+> It is inert, but delete it by hand if you want the tree clean. Git installs are unaffected.
+
 ### What `dsh plugin add` actually does
 
 `dsh plugin` is a thin front end for pnpm: it forwards its arguments to pnpm **inside the profile
@@ -213,6 +218,12 @@ to your install so it does not collide with another row.
 - **Installation needs `dsh` and pnpm.** Both ship with DSH Desktop. There is no dependency-free
   install path any more — the plugin is a profile bundle, and installing one means letting DSH
   reconcile its profile manifest.
+- **`remove` can leave a dangling symlink for local-path installs.** If you installed with
+  `dsh plugin … add C:\path\to\dsh-session-delete`, the profile entry is a `link:`. Removing it
+  prunes the manifest and the lockfile, but the symlink at
+  `$DSH_HOME/profiles/<profile>/node_modules/dsh-session-delete` was observed to survive; delete it
+  by hand. It is inert (nothing loads it), but it is untidy. Git installs copy into the store and
+  are not affected.
 - **`node --check` is the only automated test.** There is no test suite. See
   [Testing](#testing) for the manual verification that was performed.
 - **Not tested on macOS or Linux.** The removal retry loop in `host.js` exists specifically for
