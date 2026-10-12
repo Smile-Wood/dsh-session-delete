@@ -84,6 +84,17 @@ Use the profile you actually launch DSH with (`web` is the DSH Desktop default, 
 `dsh plugin …` assumes when you omit `--profile`). `dsh` is a shim into the packaged CLI, placed on
 `PATH` once DSH Desktop has been started at least once.
 
+> [!NOTE]
+> **The repository must be public for the `github:` shorthand.** pnpm probes the HTTPS URL first and
+> only falls back to SSH when that probe fails, which is what happens for a private repository or a
+> nonexistent one. On a machine where outbound SSH (port 22) is blocked, that fallback fails with
+> `ssh: connect to host github.com port 22: Connection refused`. For a private repository, use an
+> explicit HTTPS spec and let git's credential helper authenticate:
+>
+> ```sh
+> dsh plugin --profile web add git+https://github.com/<your-username>/dsh-session-delete.git
+> ```
+
 Then reload the DSH page in your browser so it picks up the browser bundle, and open a Session's
 `...` menu in the sidebar. **DSH itself does not need restarting.**
 
