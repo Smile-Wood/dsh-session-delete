@@ -1,0 +1,14 @@
+# Normalize line endings: store LF in the repository regardless of platform.
+* text=auto eol=lf
+
+# Explicit types, so GitHub's linguist classifies the project correctly.
+*.js text
+*.json text
+*.yml text
+*.md text
+LICENSE text
+
+# Keep these binary.
+*.png binary
+*.jpg binary
+*.zst binary
