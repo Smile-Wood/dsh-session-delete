@@ -68,123 +68,113 @@ $DSH_HOME/
 
 ## Install
 
-Clone the repository, then run one command:
+The plugin installs as a **profile bundle**, using DSH's own plugin command:
 
 ```sh
-git clone https://github.com/<your-username>/dsh-session-delete.git
-cd dsh-session-delete
-node install.mjs
+dsh plugin --profile web add github:<your-username>/dsh-session-delete
 ```
 
-That is the whole install. It needs Node 22+ and has no dependencies. DSH's HMR watches the file it
-writes, so the plugin mounts **immediately** — no restart. Then reload the DSH page in your browser
-so it picks up the browser bundle, and open a Session's `...` menu in the sidebar.
-
-To update later:
+From a local checkout instead of a git host:
 
 ```sh
-git pull && node install.mjs
+dsh plugin --profile web add C:\path\to\dsh-session-delete
 ```
 
-This is a real reload, not just a re-copy — see [Host reload semantics](#host-reload-semantics).
+Use the profile you actually launch DSH with (`web` is the DSH Desktop default, and is also what
+`dsh plugin …` assumes when you omit `--profile`). `dsh` is a shim into the packaged CLI, placed on
+`PATH` once DSH Desktop has been started at least once.
+
+Then reload the DSH page in your browser so it picks up the browser bundle, and open a Session's
+`...` menu in the sidebar. **DSH itself does not need restarting.**
+
+To update after new commits land, re-run the same command:
+
+```sh
+dsh plugin --profile web add github:<your-username>/dsh-session-delete
+```
+
+Re-running `add` *is* the update path: pnpm re-resolves the ref, and a changed shipped file lands in
+a new content-addressed store directory, so DSH imports a **new module URL** and the Host half
+genuinely reloads. See [Host reload semantics](#host-reload-semantics).
 
 To remove it again:
 
 ```sh
-node install.mjs --uninstall
+dsh plugin --profile web remove dsh-session-delete
 ```
 
-Add `--dry-run` to either the install or the uninstall form to see exactly what would be written,
-without writing it.
+That prunes the dependency, drops the name from `dsh.profile.bundles`, and unloads both halves —
+verified live: the route stops answering and the browser bundle leaves the client-module graph.
 
-### What the installer does
+### What `dsh plugin add` actually does
 
-It does not install a package manager artifact and does not touch your profile. It:
-
-1. Copies `host.js`, `client.js` and a generated `package.json` into
-   `$DSH_HOME/plugins/dsh-session-delete/rev-<content-hash>/`.
-2. Writes a managed block into `$DSH_HOME/cordis.patch.yml` (Windows:
-   `%USERPROFILE%\.dsh\cordis.patch.yml`) naming that copy's `host.js` by absolute path.
-
-Re-running it is idempotent: the managed block is replaced in place, never duplicated, and
-superseded `rev-*` directories are deleted. `--uninstall` removes the block and the staged copy,
-and deletes the patch file if this block was its only content.
-
-The managed block is delimited, so anything else you keep in `cordis.patch.yml` is preserved:
-
-```yaml
-# >>> dsh-session-delete managed block >>>
-# ...
-- insert:
-    - id: dsh-session-delete
-      name: 'C:/Users/you/.dsh/plugins/dsh-session-delete/rev-c471ce8e/host.js'
-# <<< dsh-session-delete managed block <<<
-```
-
-Set `DSH_HOME` if your harness home is not `~/.dsh`; the installer reads the same variable DSH does.
-
-### Why the installer stages a copy
-
-Two reasons, both about how DSH loads a plugin mounted by path.
-
-**Editing a mounted file in place does not take effect.** Node's ESM registry caches modules by
-*resolved URL* and offers no invalidation hook, so a running DSH keeps executing the Host code it
-first imported — forever, no matter how many times you save the file. The staged directory is named
-after a hash of its contents, so changed sources land on a **new URL**. That is what makes
-`git pull && node install.mjs` actually reload the Host half.
-
-**The mount should not depend on the checkout.** Staging means you can move or delete the clone
-afterwards and the plugin keeps working.
-
-### Manual install (if you would rather not run the script)
-
-Point `name` in `$DSH_HOME/cordis.patch.yml` at the **absolute path** of `host.js` in your checkout:
-
-```yaml
-- insert:
-    - id: dsh-session-delete
-      name: 'C:/Users/you/code/dsh-session-delete/host.js'
-```
-
-Save it — the plugin mounts immediately. But note the reload caveat above: with a fixed filename,
-Host code edits will not take effect until you restart DSH or rename the file. That is exactly the
-problem `install.mjs` exists to solve.
-[`examples/cordis.patch.yml`](examples/cordis.patch.yml) is an annotated version of this file.
-
-> [!NOTE]
-> `client.js` registers itself under the name `dsh-session-delete`, which must stay **character-for-character
-> identical** to `name` in `package.json`. When a plugin is mounted by path, client-modules derives
-> the browser bundle's id from the nearest enclosing `package.json`, then rejects a bundle that
-> registers under anything else — and the only symptom is a menu row that silently never appears.
-> `install.mjs` checks this before it writes anything.
-
-### Installing as a profile bundle (untested)
-
-The package manifest also carries the standard bundle shape, so it can in principle be installed as a
-profile bundle instead:
+`dsh plugin` is a thin front end for pnpm: it forwards its arguments to pnpm **inside the profile
+directory** (`$DSH_HOME/profiles/<profile>/`). The part that makes the plugin load is what DSH does
+next — it reconciles the profile manifest and, for every dependency that was just added and declares
+a `dsh.bundle.patch`, appends its package name to `dsh.profile.bundles`:
 
 ```jsonc
-// package.json
-"dsh": {
-  "bundle": { "patch": "./cordis.patch.yml" },   // Host half, resolves by package name
-  "client": { "platform": "web", "immediately": true, "inject": [ /* ... */ ] }
+// $DSH_HOME/profiles/web/package.json, after the add
+{
+  "dependencies": {
+    "dsh-session-delete": "git+https://github.com/<your-username>/dsh-session-delete.git"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "…existing bundles…",
+        "dsh-session-delete"        // <- appended by the add
+      ]
+    }
+  }
 }
 ```
 
-The bundled [`cordis.patch.yml`](cordis.patch.yml) uses the package name `dsh-session-delete` for
-this case, whereas the installer writes an absolute path. This route was **not** exercised — use the
-installer.
+`dsh.profile.bundles` is the **only** thing that decides what loads. That array is why one command
+is sufficient and no `$DSH_HOME/cordis.patch.yml` row is required.
+
+A dependency that declares no `dsh.bundle` is installed as a plain dependency and skipped, with a
+warning:
+
+```
+dsh: warning: <name> declares no dsh.bundle — installed as a plain dependency, not a profile layer
+```
+
+The bundled [`cordis.patch.yml`](cordis.patch.yml) is the patch this profile layer reads:
+
+```yaml
+- insert:
+    - id: session-delete
+      name: 'dsh-session-delete'
+```
+
+`name` is the **package name**, not a path — the profile resolves it from its own `node_modules`.
+
+> [!NOTE]
+> `client.js` registers itself under the name `dsh-session-delete`, which must stay
+> **character-for-character identical** to `name` in `package.json`. client-modules derives the
+> browser bundle's id from the enclosing `package.json` and rejects a bundle that registers under
+> anything else — and the only symptom is a menu row that silently never appears.
 
 ## Host reload semantics
 
-Node's ESM registry caches modules by **resolved URL** and offers no invalidation hook. A DSH plugin
-mounted by absolute path is imported as a `file://` URL, which means:
+Node's ESM registry caches modules by **resolved URL** and offers no invalidation hook. That has one
+practical consequence:
 
-> **Editing `host.js` in place does not take effect in a running DSH.**
+> **Editing an installed `host.js` in place does not take effect in a running DSH.**
 
-`install.mjs` sidesteps this by staging each revision under a content-addressed directory, so every
-change produces a new URL. If you mount the file by hand, or edit a staged copy directly, you must
-instead restart DSH or bump the filename (`host.js` → `host.v7.js`) and update `name` to match.
+How much that bites depends on how you installed:
+
+- **From git**, pnpm copies the package into its content-addressed store. A changed file produces a
+  new store directory, so re-running `add` yields a new URL and the Host half reloads.
+- **From a local checkout** (`dsh plugin … add C:\path\to\…`), the profile entry is a `link:`, so
+  `node_modules/dsh-session-delete` is a symlink to your working copy. Edits land on the *same* URL
+  and are never re-imported, no matter how often you save.
+
+So if you are iterating on `host.js` itself, install from a git spec (or restart DSH) rather than
+relying on a linked checkout.
 
 A second wrinkle follows from the same design: a route-table entry can outlive the fiber that
 registered it, and `webServer.register` throws on a duplicate path. `host.js` therefore evicts
@@ -220,6 +210,9 @@ to your install so it does not collide with another row.
 - **Non-public seam.** Step 2 reaches into `ctx.sessions.store`, which is not a public API. If DSH
   renames or hides it, the live-Session branch degrades to the cold-Session path (which still
   removes the bytes and the sidebar row, via step 3's explicit emit).
+- **Installation needs `dsh` and pnpm.** Both ship with DSH Desktop. There is no dependency-free
+  install path any more — the plugin is a profile bundle, and installing one means letting DSH
+  reconcile its profile manifest.
 - **`node --check` is the only automated test.** There is no test suite. See
   [Testing](#testing) for the manual verification that was performed.
 - **Not tested on macOS or Linux.** The removal retry loop in `host.js` exists specifically for
@@ -236,7 +229,8 @@ npm run check      # node --check host.js && node --check client.js
 
 The end-to-end verification performed before publication, on Windows with Node 24:
 
-1. Run `node install.mjs` and confirm the Loader entry is active.
+1. Run `dsh plugin --profile <profile> add <spec>` and confirm the name appears in
+   `dsh.profile.bundles` and the Loader entry is active.
 2. `POST` the route with a bogus id — expect `200` and a report naming the steps that were skipped:
 
    ```sh
@@ -248,17 +242,17 @@ The end-to-end verification performed before publication, on Windows with Node 2
    confirm both paths are gone while real Sessions are untouched.
 4. Confirm the sidebar row appears in the Session `...` menu and that deleting removes it without a
    reload.
+5. Run `dsh plugin --profile <profile> remove dsh-session-delete` and confirm the route stops
+   answering and the bundle leaves the client-module graph.
 
 ## Repository layout
 
 ```
-install.mjs                 One-command installer / uninstaller (no dependencies)
 host.js                     Host half: the deletion route and its five steps
 client.js                   Browser half: the Session-menu row
-cordis.patch.yml            Bundle patch (used by the untested profile-bundle route)
-examples/cordis.patch.yml   Annotated manual-mount patch
+cordis.patch.yml            Bundle patch, resolved by package name
 docs/ai-authorship.md       How this project was produced
-package.json                Manifest, including the dsh.client declaration
+package.json                Manifest, including the dsh.bundle and dsh.client declarations
 LICENSE                     MIT
 ```
 
