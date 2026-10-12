@@ -59,6 +59,13 @@ the sidebar, which triggered the longest debugging arc.
 9. **Cleaned up after itself.** Test sessions injected during debugging, dangling profile symlinks,
    and scratch files were all removed, and the three real Sessions present on the machine were
    confirmed intact.
+10. **Turned the manual mount into one command.** The first published version told the reader to
+    hand-edit `$DSH_HOME/cordis.patch.yml`, which quietly reproduced the reload trap from step 7.
+    `install.mjs` replaces that: it stages each revision under a content-addressed directory (so a
+    changed `host.js` always lands on a fresh URL), writes a delimited managed block into the patch
+    file, and refuses to install if `client.js` registers under a name that does not match
+    `package.json` — the exact defect that made the first published repository unusable. It also
+    reports the revision it staged and supports `--dry-run` and `--uninstall`.
 
 ## Corrections and dead ends
 
@@ -80,6 +87,12 @@ was wrong and how it was caught.
 - **Fifteen consecutive compression failures.** Context-compression calls failed repeatedly because
   model switches invalidated the message references being targeted. Not a code defect, but it
   shaped the session and is part of the honest record.
+- **A published repository that could not have worked.** The first version of this repository
+   shipped `client.js` registering under the old development name `@local/session-delete` while
+   `package.json` said `dsh-session-delete`. Anyone cloning it would have seen no menu item, with no
+   error reported anywhere. It was caught by re-deriving the id-resolution rule from the
+   client-modules source, and is now guarded by `install.mjs`. The general lesson: an id that is only
+   ever compared at runtime deserves a build-time check.
 
 ## What was verified, and what was not
 
@@ -91,14 +104,22 @@ Verified on Windows with Node 24, against a live DSH install:
 - the menu row registers as a slot occupant alongside the four shipped rows;
 - end-to-end: a throwaway Session's artifact directory and projection-cache file are both removed,
   and real Sessions are untouched;
-- `node --check` passes on both halves.
+- `node --check` passes on both halves;
+- `install.mjs` across its full lifecycle in a throwaway `$DSH_HOME`: install, idempotent reinstall
+  (one managed block, one revision directory), a changed `host.js` producing a new revision
+  directory and an updated mount path, the client-id guard rejecting a mismatch with exit code 1,
+  and `--uninstall` removing both the mount and the staged copy — including deleting the patch file
+  when the managed block was its only content, and preserving unrelated rows when it was not.
 
 Not verified:
 
 - any DSH version other than the one it was built against;
 - non-Windows platforms (the removal retry loop exists specifically for Windows handle semantics);
 - concurrent deletion of the same Session, or deletion during an active turn;
-- behavior after a DSH upgrade that changes the on-disk layout.
+- behavior after a DSH upgrade that changes the on-disk layout;
+- the profile-bundle install route described in the README (the installer path is the tested one);
+- `install.mjs` against a `$DSH_HOME` that is not the default `~/.dsh` in a real DSH process —
+  the `DSH_HOME` override was exercised, but only against throwaway directories.
 
 ## Maintenance expectations
 

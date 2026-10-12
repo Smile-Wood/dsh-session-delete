@@ -1,11 +1,17 @@
-// Client half of @local/session-delete.
+// Client half of dsh-session-delete.
 //
 // Adds a "删除会话" (Delete Session) row to each Session's "..." menu in the
 // sidebar. Confirming calls the Host route that permanently removes the Session
 // log; the Host also detaches the live Session, so `session/disposed` ->
 // `api-session/removed` removes the sidebar row without a reload.
+//
+// The `id` below must be exactly the `name` field of the sibling package.json.
+// client-modules derives the browser bundle's id from the resolved package's
+// name and then rejects a bundle that registers under anything else
+// ("loaded without registering ... via __ModuleLoader__.load"), which shows up
+// only as a missing menu row. Renaming the package means renaming this string.
 window.__ModuleLoader__.load({
-  id: "@local/session-delete",
+  id: "dsh-session-delete",
   factory: (require) => {
     var module = { exports: {} };
     var exports = module.exports;

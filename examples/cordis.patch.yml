@@ -1,9 +1,14 @@
-# Example: mount this plugin from a checkout, without installing it into the
-# profile.
+# Example: mount this plugin from a checkout by hand, without installing it into
+# the profile.
 #
-# Drop this file at  $DSH_HOME/cordis.patch.yml  (that is
-# %USERPROFILE%\.dsh\cordis.patch.yml on Windows) and edit the `name` below to
-# the absolute path of host.js in your checkout.
+# You probably do not need this file. `node install.mjs` writes an equivalent
+# block into $DSH_HOME/cordis.patch.yml for you, and does it in a way that
+# survives edits (see the last note below). This file is the manual fallback and
+# an explanation of what the installer is doing.
+#
+# To use it: append the block at the bottom to
+# $DSH_HOME/cordis.patch.yml (%USERPROFILE%\.dsh\cordis.patch.yml on Windows),
+# editing `name` to the absolute path of host.js in your checkout.
 #
 # Why this works, and why the path is absolute:
 #
@@ -18,14 +23,16 @@
 #
 # That last point cuts both ways: editing host.js in place will NOT be picked
 # up. To load a changed Host half you must either restart DSH, or bump the
-# filename (host.js -> host.v7.js) and update the `name` below to match.
+# filename (host.js -> host.v7.js) and update the `name` below to match. This is
+# the trap `install.mjs` avoids by staging each revision in a directory named
+# after its contents.
 
 # Retire any earlier generation still listed here. A route table entry can
 # outlive the fiber that registered it, so leaving an old row enabled keeps a
 # stale route (and a duplicate-path error) alive.
-# - id: session-delete
+# - id: dsh-session-delete
 #   disabled: true
 
 - insert:
-    - id: session-delete
+    - id: dsh-session-delete
       name: 'C:/Users/you/code/dsh-session-delete/host.js'

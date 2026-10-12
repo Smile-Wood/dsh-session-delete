@@ -8,17 +8,19 @@ the DSH version you are running and the exact step that failed.
 - Check [Limitations](../README.md#limitations) in the README. Several failure modes are known and
   documented, including the one where a DSH upgrade changes the on-disk layout.
 - If the menu item does not appear at all, confirm the browser bundle reached the client-module
-  graph — a plugin can be active on the Host while its browser half is missing.
+  graph — a plugin can be active on the Host while its browser half is missing. The most common
+  cause is a mismatch between the id in `client.js` and `name` in `package.json`; `install.mjs`
+  rejects that combination before it writes anything.
 - If a code change to `host.js` appears to do nothing, read
-  [Host reload semantics](../README.md#host-reload-semantics-read-this-before-editing-hostjs).
-  Editing a mounted Host file in place is *expected* to have no effect.
+  [Host reload semantics](../README.md#host-reload-semantics). Editing a mounted Host file in place
+  is *expected* to have no effect. Re-run `node install.mjs` rather than editing the staged copy.
 
 ## A good bug report
 
 Include:
 
 1. DSH version and OS.
-2. How you mounted the plugin (checkout patch file, or profile bundle).
+2. How you mounted the plugin (the installer, a hand-written patch row, or a profile bundle).
 3. The `POST /plugins/session-delete/delete` response body, verbatim. The `steps` array names
    exactly which of the five steps ran, was skipped, or failed, and `generation` names the Host
    module that answered.
@@ -32,6 +34,8 @@ of the `steps` array intact, since that is the diagnostic.
 - Keep the five-step sequence in `host.js` legible. The comments explaining *why* each seam is used
   are the most valuable part of this file; if you change a seam, update the comment.
 - If you add a Host generation (a new filename), extend `STALE_ROUTES` in the same commit.
+- If you change the plugin's file set, keep `install.mjs` in step: it stages `host.js`, `client.js`
+  and a generated `package.json`, and its content hash covers exactly those three.
 - Run `npm run check` before opening the PR.
 - This project is AI-generated. If your contribution is also AI-generated, say so in the PR
   description.

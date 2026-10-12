@@ -68,58 +68,123 @@ $DSH_HOME/
 
 ## Install
 
-There are two ways to mount it.
+Clone the repository, then run one command:
 
-> Only **Option A** was verified end to end. Option B is the standard bundle shape and the package
-> manifest is written for it, but it was not exercised with this package name — treat it as
-> untested.
+```sh
+git clone https://github.com/<your-username>/dsh-session-delete.git
+cd dsh-session-delete
+node install.mjs
+```
 
-### Option A — mount from a checkout (no install step)
+That is the whole install. It needs Node 22+ and has no dependencies. DSH's HMR watches the file it
+writes, so the plugin mounts **immediately** — no restart. Then reload the DSH page in your browser
+so it picks up the browser bundle, and open a Session's `...` menu in the sidebar.
 
-This is the simplest route, and the one used during development and testing.
+To update later:
 
-1. Clone this repository somewhere permanent.
-2. Create or edit `$DSH_HOME/cordis.patch.yml` (Windows: `%USERPROFILE%\.dsh\cordis.patch.yml`)
-   and point `name` at the **absolute path** of `host.js`:
+```sh
+git pull && node install.mjs
+```
 
-   ```yaml
-   - insert:
-       - id: session-delete
-         name: 'C:/Users/you/code/dsh-session-delete/host.js'
-   ```
+This is a real reload, not just a re-copy — see [Host reload semantics](#host-reload-semantics).
 
-3. Save the file. DSH's HMR watches this patch layer, so the plugin mounts immediately — no
-   restart needed.
-4. Reload the DSH page in your browser so it picks up the new client bundle.
+To remove it again:
 
-See [`examples/cordis.patch.yml`](examples/cordis.patch.yml) for an annotated version of this file.
+```sh
+node install.mjs --uninstall
+```
 
-### Option B — install as a profile bundle (untested)
+Add `--dry-run` to either the install or the uninstall form to see exactly what would be written,
+without writing it.
 
-Install the package into the `web` profile and enable it. The exact command depends on how your DSH
-build exposes plugin management; the package is shaped for it:
+### What the installer does
+
+It does not install a package manager artifact and does not touch your profile. It:
+
+1. Copies `host.js`, `client.js` and a generated `package.json` into
+   `$DSH_HOME/plugins/dsh-session-delete/rev-<content-hash>/`.
+2. Writes a managed block into `$DSH_HOME/cordis.patch.yml` (Windows:
+   `%USERPROFILE%\.dsh\cordis.patch.yml`) naming that copy's `host.js` by absolute path.
+
+Re-running it is idempotent: the managed block is replaced in place, never duplicated, and
+superseded `rev-*` directories are deleted. `--uninstall` removes the block and the staged copy,
+and deletes the patch file if this block was its only content.
+
+The managed block is delimited, so anything else you keep in `cordis.patch.yml` is preserved:
+
+```yaml
+# >>> dsh-session-delete managed block >>>
+# ...
+- insert:
+    - id: dsh-session-delete
+      name: 'C:/Users/you/.dsh/plugins/dsh-session-delete/rev-c471ce8e/host.js'
+# <<< dsh-session-delete managed block <<<
+```
+
+Set `DSH_HOME` if your harness home is not `~/.dsh`; the installer reads the same variable DSH does.
+
+### Why the installer stages a copy
+
+Two reasons, both about how DSH loads a plugin mounted by path.
+
+**Editing a mounted file in place does not take effect.** Node's ESM registry caches modules by
+*resolved URL* and offers no invalidation hook, so a running DSH keeps executing the Host code it
+first imported — forever, no matter how many times you save the file. The staged directory is named
+after a hash of its contents, so changed sources land on a **new URL**. That is what makes
+`git pull && node install.mjs` actually reload the Host half.
+
+**The mount should not depend on the checkout.** Staging means you can move or delete the clone
+afterwards and the plugin keeps working.
+
+### Manual install (if you would rather not run the script)
+
+Point `name` in `$DSH_HOME/cordis.patch.yml` at the **absolute path** of `host.js` in your checkout:
+
+```yaml
+- insert:
+    - id: dsh-session-delete
+      name: 'C:/Users/you/code/dsh-session-delete/host.js'
+```
+
+Save it — the plugin mounts immediately. But note the reload caveat above: with a fixed filename,
+Host code edits will not take effect until you restart DSH or rename the file. That is exactly the
+problem `install.mjs` exists to solve.
+[`examples/cordis.patch.yml`](examples/cordis.patch.yml) is an annotated version of this file.
+
+> [!NOTE]
+> `client.js` registers itself under the name `dsh-session-delete`, which must stay **character-for-character
+> identical** to `name` in `package.json`. When a plugin is mounted by path, client-modules derives
+> the browser bundle's id from the nearest enclosing `package.json`, then rejects a bundle that
+> registers under anything else — and the only symptom is a menu row that silently never appears.
+> `install.mjs` checks this before it writes anything.
+
+### Installing as a profile bundle (untested)
+
+The package manifest also carries the standard bundle shape, so it can in principle be installed as a
+profile bundle instead:
 
 ```jsonc
 // package.json
 "dsh": {
-  "bundle": { "patch": "./cordis.patch.yml" },   // Host half
+  "bundle": { "patch": "./cordis.patch.yml" },   // Host half, resolves by package name
   "client": { "platform": "web", "immediately": true, "inject": [ /* ... */ ] }
 }
 ```
 
-Note that the bundled [`cordis.patch.yml`](cordis.patch.yml) uses the package name
-`dsh-session-delete`, whereas the checkout in Option A uses an absolute path. That difference is
-intentional — see the next section.
+The bundled [`cordis.patch.yml`](cordis.patch.yml) uses the package name `dsh-session-delete` for
+this case, whereas the installer writes an absolute path. This route was **not** exercised — use the
+installer.
 
-## Host reload semantics (read this before editing `host.js`)
+## Host reload semantics
 
-Node's ESM registry caches modules by **resolved URL** and offers no invalidation hook. A DSH
-plugin mounted by absolute path is imported as a `file://` URL, which means:
+Node's ESM registry caches modules by **resolved URL** and offers no invalidation hook. A DSH plugin
+mounted by absolute path is imported as a `file://` URL, which means:
 
 > **Editing `host.js` in place does not take effect in a running DSH.**
 
-To load changed Host code you must either restart DSH, or bump the filename
-(`host.js` → `host.v7.js`) and update `name` in the patch file to match.
+`install.mjs` sidesteps this by staging each revision under a content-addressed directory, so every
+change produces a new URL. If you mount the file by hand, or edit a staged copy directly, you must
+instead restart DSH or bump the filename (`host.js` → `host.v7.js`) and update `name` to match.
 
 A second wrinkle follows from the same design: a route-table entry can outlive the fiber that
 registered it, and `webServer.register` throws on a duplicate path. `host.js` therefore evicts
@@ -171,7 +236,7 @@ npm run check      # node --check host.js && node --check client.js
 
 The end-to-end verification performed before publication, on Windows with Node 24:
 
-1. Mount via Option A and confirm the Loader entry is active.
+1. Run `node install.mjs` and confirm the Loader entry is active.
 2. `POST` the route with a bogus id — expect `200` and a report naming the steps that were skipped:
 
    ```sh
@@ -187,10 +252,11 @@ The end-to-end verification performed before publication, on Windows with Node 2
 ## Repository layout
 
 ```
+install.mjs                 One-command installer / uninstaller (no dependencies)
 host.js                     Host half: the deletion route and its five steps
 client.js                   Browser half: the Session-menu row
-cordis.patch.yml            Bundle patch (used by Option B)
-examples/cordis.patch.yml   Annotated checkout-mount patch (Option A)
+cordis.patch.yml            Bundle patch (used by the untested profile-bundle route)
+examples/cordis.patch.yml   Annotated manual-mount patch
 docs/ai-authorship.md       How this project was produced
 package.json                Manifest, including the dsh.client declaration
 LICENSE                     MIT

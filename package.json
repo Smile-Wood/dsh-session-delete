@@ -20,6 +20,7 @@
   "files": [
     "host.js",
     "client.js",
+    "install.mjs",
     "cordis.patch.yml",
     "README.md",
     "LICENSE"
@@ -38,7 +39,9 @@
     }
   },
   "scripts": {
-    "check": "node --check host.js && node --check client.js"
+    "check": "node --check host.js && node --check client.js && node --check install.mjs",
+    "install-plugin": "node install.mjs",
+    "uninstall-plugin": "node install.mjs --uninstall"
   },
   "engines": {
     "node": ">=22"
